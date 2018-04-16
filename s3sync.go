@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/md5"
 	"encoding/base64"
+	"flag"
 	"io"
 	"log"
 	"os"
@@ -14,11 +15,15 @@ import (
 )
 
 func main() {
-	if len(os.Args) != 2 {
-		fatal("filename required to upload")
+
+	filenamePtr := flag.String("f", "", "file to upload")
+	flag.Parse()
+
+	if *filenamePtr == "" {
+		fatal("Must specify filename to upload")
 	}
 
-	filename := os.Args[1]
+	filename := *filenamePtr
 	bucket := "ares-minion-testbucket"
 
 	file, err := os.Open(filename)
@@ -59,9 +64,9 @@ func main() {
 		if err != nil {
 			fatal("Unable to upload %q to %q, %v", filename, bucket, err)
 		}
-
 		info("Successfully uploaded %q to %q", filename, bucket)
-
+	} else {
+		info("Nothing to be done.")
 	}
 
 }
