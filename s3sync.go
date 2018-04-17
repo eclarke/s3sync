@@ -1,11 +1,5 @@
 package main
 
-/*
-Adapted from the AWS example code, but performs MD5 hashing to prevent
-unnecessary duplication/re-uploading.
-AWS example code: https://github.com/aws/aws-sdk-go/blob/master/example/service/s3/sync/sync.go
-*/
-
 import (
 	"archive/tar"
 	"compress/gzip"
