@@ -8,7 +8,7 @@
 * Completely dependency-free and cross-platform!
 
 ## Installation
-First, store your AWS-type credentials in a file with the following structure in `~/.aws/credentials` (or any other valid configuration as shown [here](https://docs.aws.amazon.com/sdk-for-go/v1/developer-guide/configuring-sdk.html#specifying-credentials):
+First, store your AWS-type credentials in a file with the following structure in `~/.aws/credentials` (or any other valid configuration as shown [here](https://docs.aws.amazon.com/sdk-for-go/v1/developer-guide/configuring-sdk.html#specifying-credentials)):
 
 ```
 [default]
