@@ -1,12 +1,24 @@
 package main
 
+/*
+Adapted from the AWS example code, but performs MD5 hashing to prevent
+unnecessary duplication/re-uploading.
+AWS example code: https://github.com/aws/aws-sdk-go/blob/master/example/service/s3/sync/sync.go
+*/
+
 import (
+	"archive/tar"
+	"compress/gzip"
 	"crypto/md5"
 	"encoding/base64"
 	"flag"
+	"fmt"
 	"io"
 	"log"
 	"os"
+	"path/filepath"
+
+	"github.com/aws/aws-sdk-go/aws/awserr"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -14,61 +26,56 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 )
 
-func main() {
-
-	filenamePtr := flag.String("f", "", "file to upload")
-	flag.Parse()
-
-	if *filenamePtr == "" {
-		fatal("Must specify filename to upload")
-	}
-
-	filename := *filenamePtr
-	bucket := "ares-minion-testbucket"
-
-	file, err := os.Open(filename)
+func addFile(tw *tar.Writer, path string, info os.FileInfo) error {
+	file, err := os.Open(path)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	defer file.Close()
-	// calculate the MD5sum of the file, then seek back to the beginning
-	h := md5.New()
-	if _, err := io.Copy(h, file); err != nil {
-		log.Fatal(err)
+	// Alter the name in the FileInfo to take the full path so that
+	// the tar file maintains the directory structure
+	header, err := tar.FileInfoHeader(info, path)
+	header.Name = path
+	if err != nil {
+		return err
 	}
-	file.Seek(0, 0)
+	if err := tw.WriteHeader(header); err != nil {
+		return err
+	}
+	if _, err := io.Copy(tw, file); err != nil {
+		return err
+	}
+	return nil
+}
 
-	hash := base64.StdEncoding.EncodeToString(h.Sum(nil))
-
-	sess, err := session.NewSession(&aws.Config{
-		Region:   aws.String("us-east-1"),
-		Endpoint: aws.String("https://s3.wasabisys.com")},
-	)
-
-	svc := s3.New(sess)
-
-	if !objectExists(filename, hash, bucket, svc) {
-		info("Uploading object %q...", filename)
-		uploader := s3manager.NewUploader(sess)
-
-		metadata := make(map[string]string)
-		metadata["md5chksum"] = hash
-
-		_, err = uploader.Upload(&s3manager.UploadInput{
-			Bucket:     aws.String(bucket),
-			Key:        aws.String(filename),
-			ContentMD5: aws.String(hash),
-			Metadata:   aws.StringMap(metadata),
-			Body:       file,
-		})
-		if err != nil {
-			fatal("Unable to upload %q to %q, %v", filename, bucket, err)
+func addFilesToArchive(tw *tar.Writer, path string) error {
+	filepath.Walk(path, func(p string, info os.FileInfo, err error) error {
+		if !info.IsDir() {
+			if err := addFile(tw, p, info); err != nil {
+				return err
+			}
 		}
-		info("Successfully uploaded %q to %q", filename, bucket)
-	} else {
-		info("Nothing to be done.")
-	}
+		return nil
+	})
+	return nil
+}
 
+func createArchive(name string, path string) error {
+
+	info("Creating archive %q", name)
+	archive, err := os.Create(fmt.Sprintf(name))
+	if err != nil {
+		return err
+	}
+	defer archive.Close()
+	gw := gzip.NewWriter(archive)
+	defer gw.Close()
+	tw := tar.NewWriter(gw)
+	defer tw.Close()
+	if err := addFilesToArchive(tw, path); err != nil {
+		return err
+	}
+	return nil
 }
 
 func objectExists(key string, hash string, bucket string, svc *s3.S3) bool {
@@ -78,28 +85,147 @@ func objectExists(key string, hash string, bucket string, svc *s3.S3) bool {
 		Bucket: aws.String(bucket),
 	})
 	if err != nil {
-		info("No corresponding object found")
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			case "NotFound":
+				info("Remote: object not found")
+			default:
+				fatal("Error querying remote endpoint: %v", err)
+			}
+		}
+
 		return false
 	}
 	md5sum, hasMd5 := out.Metadata["Md5chksum"]
 
 	if hasMd5 && (*md5sum == hash) {
-		info("Found object and MD5 matched")
+		info("Remote: found matching name and MD5")
 		return true
 	} else if hasMd5 {
-		info("Found object, but MD5 mismatched")
+		info("Remote: found matching name, but mismatched MD5 (local: %s, remote: %s)", hash, *md5sum)
 		return false
 	} else {
-		info("Found object, but no MD5 stored")
+		info("Remote: found matching name, but no MD5 stored")
 		return false
 	}
 
 }
 
 func info(format string, v ...interface{}) {
-	log.Printf("[ INFO] "+format+"\n", v...)
+	log.Printf("[INFO] "+format+"\n", v...)
 }
 
 func fatal(format string, v ...interface{}) {
 	log.Fatalf("[FATAL] "+format+"\n", v...)
+}
+
+func calculateFileMD5(file *os.File) (string, error) {
+	h := md5.New()
+	if _, err := io.Copy(h, file); err != nil {
+		return "", err
+	}
+	file.Seek(0, 0)
+
+	hash := base64.StdEncoding.EncodeToString(h.Sum(nil))
+	return hash, nil
+}
+
+func main() {
+
+	bucketPtr := flag.String("bucket", "", "bucket name")
+	folderPtr := flag.String("folder", "", "folder to upload")
+	endpointPtr := flag.String("endpoint", "https://s3.wasabisys.com", "service endpoint url")
+	regionPtr := flag.String("region", "us-east-1", "s3 region")
+	makeBucket := flag.Bool("makeBucket", false, "create bucket")
+	remakeArchive := flag.Bool("force", false, "recreate archive if exists")
+
+	flag.Parse()
+
+	if *folderPtr == "" {
+		fatal("Must specify folder to upload")
+	}
+
+	if *bucketPtr == "" {
+		fatal("Must specify bucket name")
+	}
+
+	folder := *folderPtr
+	bucket := *bucketPtr
+
+	sess, err := session.NewSession(&aws.Config{
+		Region:   aws.String(*regionPtr),
+		Endpoint: aws.String(*endpointPtr)},
+	)
+	if err != nil {
+		fatal("Could not connect to S3: %v", err)
+	}
+
+	svc := s3.New(sess)
+	if *makeBucket {
+		info("Creating bucket %s", bucket)
+		_, err = svc.CreateBucket(&s3.CreateBucketInput{
+			Bucket: aws.String(bucket),
+		})
+		if err != nil {
+			fatal("Could not create bucket: %v", err)
+		}
+		info("Waiting for bucket to be created...")
+		err = svc.WaitUntilBucketExists(&s3.HeadBucketInput{
+			Bucket: aws.String(bucket),
+		})
+		if err != nil {
+			fatal("Error occurred while waiting for bucket to be created: %v", err)
+		}
+	}
+
+	// Create name.tar.gz archive if it doesn't exist
+	folder, err = filepath.Abs(folder)
+	info("Archiving folder %q", folder)
+	archiveInfo, err := os.Stat(folder)
+	if err != nil {
+		fatal("Could not get info on target folder %s: %v", folder, err)
+	}
+	archiveName := fmt.Sprintf("%s.tar.gz", archiveInfo.Name())
+	if _, err := os.Stat(archiveName); (err == nil) && !*remakeArchive {
+		info("Archive %q already exists; not recreating", archiveName)
+	} else {
+		if err = createArchive(archiveName, folder); err != nil {
+			fatal("Could not create archive: %v", err)
+		}
+	}
+
+	// Check MD5 of archive
+	archive, err := os.Open(archiveName)
+	if err != nil {
+		fatal("Could not stat archive: %v", err)
+	}
+	defer archive.Close()
+
+	archiveHash, err := calculateFileMD5(archive)
+	if err != nil {
+		fatal("Could not calculate MD5sum of archive: %v", err)
+	}
+
+	if !objectExists(archiveName, archiveHash, bucket, svc) {
+		info("Uploading archive %s to %s...", archiveName, bucket)
+		uploader := s3manager.NewUploader(sess)
+		metadata := make(map[string]string)
+		metadata["md5chksum"] = archiveHash
+		_, err = uploader.Upload(&s3manager.UploadInput{
+			Bucket:     aws.String(bucket),
+			Key:        aws.String(archiveName),
+			ContentMD5: aws.String(archiveHash),
+			Metadata:   aws.StringMap(metadata),
+			Body:       archive,
+		})
+		if err != nil {
+			fatal("Unable to upload %q to %q, %v", archiveName, bucket, err)
+		}
+		info("Successfully uploaded %q to %q", archiveName, bucket)
+	} else {
+		info("Nothing to be done.")
+	}
+
+	info("Finished.")
+
 }
