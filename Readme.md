@@ -16,13 +16,11 @@ aws_access_key_id = XXXX
 aws_secret_access_key = XXXX
 ```
 
-### Installing from binaries
-Retrieve the binaries from GitHub (replace `linux64` with `mac64` or `windows64` as appropriate):
-```sh
-wget https://github.com/eclarke/s3sync/releases/download/v0.1.0/s3sync-linux64 
-```
+Next, download a binary from our release page. The most up-to-date binaries are always available in the [latest](https://github.com/eclarke/s3sync/releases/tag/latest) release. Alternatively, download them from the command line, for example: 
 
-And you’re done!
+```sh
+wget https://github.com/eclarke/s3sync/releases/download/latest/s3sync-linux_amd64 
+```
 
 ## Usage
 ```sh
