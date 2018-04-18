@@ -75,6 +75,44 @@ func createArchive(name string, path string) error {
 	return nil
 }
 
+func uploadArchive(name string, bucket string, md5 string, sess *session.Session) error {
+	info("Uploading archive %q to %q...", name, bucket)
+	uploader := s3manager.NewUploader(sess)
+	file, err := os.Open(name)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	metadata := make(map[string]string)
+	metadata["md5chksum"] = md5
+	_, err = uploader.Upload(&s3manager.UploadInput{
+		Bucket:     aws.String(bucket),
+		Key:        aws.String(name),
+		ContentMD5: aws.String(md5),
+		Metadata:   aws.StringMap(metadata),
+		Body:       file,
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func calculateFileMD5(path string) (string, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+	h := md5.New()
+	if _, err := io.Copy(h, file); err != nil {
+		return "", err
+	}
+
+	hash := base64.StdEncoding.EncodeToString(h.Sum(nil))
+	return hash, nil
+}
+
 func objectExists(key string, hash string, bucket string, svc *s3.S3) bool {
 	// First see if it exists, and if so whether we can grab the md5 checksum
 	out, err := svc.HeadObject(&s3.HeadObjectInput{
@@ -108,25 +146,17 @@ func objectExists(key string, hash string, bucket string, svc *s3.S3) bool {
 
 }
 
-func info(format string, v ...interface{}) {
-	green := color.New(color.FgGreen).SprintFunc()
-	log.Printf("["+green("INFO")+"] "+format+"\n", v...)
-}
-
-func fatal(format string, v ...interface{}) {
-	red := color.New(color.FgRed).SprintFunc()
-	log.Fatalf("["+red("ERROR")+"] "+format+"\n", v...)
-}
-
-func calculateFileMD5(file *os.File) (string, error) {
-	h := md5.New()
-	if _, err := io.Copy(h, file); err != nil {
-		return "", err
+func resolveFolder(path string) (abspath string, name string, err error) {
+	abspath, err = filepath.Abs(path)
+	if err != nil {
+		return "", "", err
 	}
-	file.Seek(0, 0)
-
-	hash := base64.StdEncoding.EncodeToString(h.Sum(nil))
-	return hash, nil
+	info, err := os.Stat(abspath)
+	if err != nil {
+		return "", "", err
+	}
+	name = info.Name()
+	return
 }
 
 func main() {
@@ -139,7 +169,6 @@ func main() {
 	folderPtr := flag.String("folder", "", "folder to upload")
 	endpointPtr := flag.String("endpoint", "https://s3.wasabisys.com", "service endpoint url")
 	regionPtr := flag.String("region", "us-east-1", "s3 region")
-	makeBucket := flag.Bool("makeBucket", false, "create bucket")
 	remakeArchive := flag.Bool("force", false, "recreate archive if exists")
 	clean := flag.Bool("clean", false, "delete local archive upon successful upload")
 
@@ -153,7 +182,6 @@ func main() {
 		fatal("Must specify bucket name")
 	}
 
-	folder := *folderPtr
 	bucket := *bucketPtr
 
 	sess, err := session.NewSession(&aws.Config{
@@ -166,35 +194,15 @@ func main() {
 
 	svc := s3.New(sess)
 
-	// Create bucket if requested
-
-	if *makeBucket {
-		info("Creating bucket %s", bucket)
-		_, err = svc.CreateBucket(&s3.CreateBucketInput{
-			Bucket: aws.String(bucket),
-		})
-		if err != nil {
-			fatal("Could not create bucket. (%v)", err)
-		}
-		info("Waiting for bucket to be created...")
-		err = svc.WaitUntilBucketExists(&s3.HeadBucketInput{
-			Bucket: aws.String(bucket),
-		})
-		if err != nil {
-			fatal("Error occurred while waiting for bucket to be created. (%v)", err)
-		}
-	}
-
 	// Create archive
-
-	// Create name.tar.gz archive if it doesn't exist
-	folder, err = filepath.Abs(folder)
-	info("Target folder: %s", folder)
-	archiveInfo, err := os.Stat(folder)
+	folder, name, err := resolveFolder(*folderPtr)
 	if err != nil {
-		fatal("Could not get info on target folder %q. (%v)", folder, err)
+		fatal("Could not resolve target folder %q. (%v)", err)
 	}
-	archiveName := fmt.Sprintf("%s.tar.gz", archiveInfo.Name())
+
+	info("Target folder: %s", folder)
+
+	archiveName := fmt.Sprintf("%s.tar.gz", name)
 	if _, err := os.Stat(archiveName); (err == nil) && !*remakeArchive {
 		info("Archive %q already exists; not recreating", archiveName)
 	} else {
@@ -205,32 +213,16 @@ func main() {
 
 	// Create MD5 of archive
 	info("Checking if %q exists on remote...", archiveName)
-	archive, err := os.Open(archiveName)
-	if err != nil {
-		fatal("Could not read archive. (%v)", err)
-	}
-	defer archive.Close()
 
-	archiveHash, err := calculateFileMD5(archive)
+	archiveHash, err := calculateFileMD5(archiveName)
 	if err != nil {
 		fatal("Could not calculate MD5sum of archive. (%v)", err)
 	}
 
 	// Upload archive if doesn't exist/mismatched
 	if !objectExists(archiveName, archiveHash, bucket, svc) {
-		info("Uploading archive %q to %q...", archiveName, bucket)
-		uploader := s3manager.NewUploader(sess)
-		metadata := make(map[string]string)
-		metadata["md5chksum"] = archiveHash
-		_, err = uploader.Upload(&s3manager.UploadInput{
-			Bucket:     aws.String(bucket),
-			Key:        aws.String(archiveName),
-			ContentMD5: aws.String(archiveHash),
-			Metadata:   aws.StringMap(metadata),
-			Body:       archive,
-		})
-		if err != nil {
-			fatal("Unable to upload %q to %q. (%v)", archiveName, bucket, err)
+		if err = uploadArchive(archiveName, bucket, archiveHash, sess); err != nil {
+			fatal("Unable to upload %q. (%v)", archiveName, bucket, err)
 		}
 	} else {
 		info("Nothing to be done.")
@@ -245,4 +237,14 @@ func main() {
 
 	info("Finished.")
 
+}
+
+func info(format string, v ...interface{}) {
+	green := color.New(color.FgGreen).SprintFunc()
+	log.Printf("["+green("INFO")+"] "+format+"\n", v...)
+}
+
+func fatal(format string, v ...interface{}) {
+	red := color.New(color.FgRed).SprintFunc()
+	log.Fatalf("["+red("ERROR")+"] "+format+"\n", v...)
 }
