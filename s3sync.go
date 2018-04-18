@@ -11,6 +11,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/fatih/color"
 
@@ -130,12 +131,17 @@ func calculateFileMD5(file *os.File) (string, error) {
 
 func main() {
 
+	if runtime.GOOS == "windows" {
+		color.NoColor = true
+	}
+
 	bucketPtr := flag.String("bucket", "", "bucket name")
 	folderPtr := flag.String("folder", "", "folder to upload")
 	endpointPtr := flag.String("endpoint", "https://s3.wasabisys.com", "service endpoint url")
 	regionPtr := flag.String("region", "us-east-1", "s3 region")
 	makeBucket := flag.Bool("makeBucket", false, "create bucket")
 	remakeArchive := flag.Bool("force", false, "recreate archive if exists")
+	clean := flag.Bool("clean", false, "delete local archive upon successful upload")
 
 	flag.Parse()
 
@@ -183,7 +189,7 @@ func main() {
 
 	// Create name.tar.gz archive if it doesn't exist
 	folder, err = filepath.Abs(folder)
-	info("Archiving folder %q", folder)
+	info("Target folder: %s", folder)
 	archiveInfo, err := os.Stat(folder)
 	if err != nil {
 		fatal("Could not get info on target folder %q. (%v)", folder, err)
@@ -198,7 +204,7 @@ func main() {
 	}
 
 	// Create MD5 of archive
-	info("Checking if %q exists on remote")
+	info("Checking if %q exists on remote...", archiveName)
 	archive, err := os.Open(archiveName)
 	if err != nil {
 		fatal("Could not read archive. (%v)", err)
@@ -228,6 +234,13 @@ func main() {
 		}
 	} else {
 		info("Nothing to be done.")
+	}
+
+	if *clean {
+		if err = os.Remove(archiveName); err != nil {
+			fatal("Unable to delete %q; maybe try manually? (%v)", archiveName, err)
+		}
+		info("Deleted local copy of %q", archiveName)
 	}
 
 	info("Finished.")
