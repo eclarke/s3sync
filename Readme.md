@@ -19,7 +19,7 @@ aws_secret_access_key = XXXX
 Next, download a binary from our release page. The most up-to-date binaries are always available in the [latest](https://github.com/eclarke/s3sync/releases/tag/latest) release. Alternatively, download them from the command line, for example: 
 
 ```sh
-wget https://github.com/eclarke/s3sync/releases/download/latest/s3sync-linux_amd64 
+wget https://github.com/eclarke/s3sync/releases/download/latest/s3sync_linux_amd64 
 ```
 
 ## Usage
