@@ -26,8 +26,10 @@ wget https://github.com/eclarke/s3sync/releases/download/latest/s3sync_linux_amd
 ```sh
 $ ./s3sync-linux64 -h
 Usage of ./s3sync-linux64:
-  -bucket string
+-bucket string
         bucket name
+  -clean
+        delete local archive upon successful upload
   -endpoint string
         service endpoint url (default "https://s3.wasabisys.com")
   -folder string
@@ -47,4 +49,4 @@ To upload a folder to Wasabi, you’d run
 
 S3Sync will then create an archive in the working directory called `folder.tar.gz` (make sure you have enough space on your hard drive for this!) and upload it to S3. 
 
-If you re-run this command, you will find that nothing happens: it doesn’t recreate the archive and it doesn’t re-upload as the local copy and the remote copy have the same fingerprint. If you’ve changed something in the folder, specify `-force` to recreate the archive. This will trigger a re-upload since the fingerprints will no longer match.
+If you re-run this command, you will find that nothing happens: it doesn’t recreate the archive and it doesn’t re-upload as the local copy and the remote copy have the same fingerprint. If you’ve changed something in the folder, specify `-force` to recreate the archive. This will trigger a re-upload since the fingerprints will no longer match. If you specify `-clean`, the local archive will be deleted upon successful upload.
