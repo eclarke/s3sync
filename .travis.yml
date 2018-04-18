@@ -1,0 +1,15 @@
+language: go
+go: 
+  - "1.10"
+env:
+  - "PATH=$GOPATH/bin:$PATH"
+before_install:
+  - go get github.com/mitchellh/gox
+  - gox -build-toolchain
+  - go get github.com/tcnksm/ghr
+script:
+  - go test
+after_success:
+  - gox -output "dist/{{.OS}}_{{.Arch}}_{{.Dir}}"
+  - ghr --username eclarke --token $GITHUB_TOKEN --replace --prerelease --debug pre-release dist/
+secure: "Qb8yX8v7b7aRJRyjUDS3Q48FF+7wtY8DeMbelPfnx5g0lDToUKA7Sx02MxI9WYU8eBaAJnXriZusA5St0E9HuVnWKMNMyU0SjGZXlrJXXpQoEmhe61iRK9NrtDFRB2n44ANV69ISJY+VgVhAZCiO7EcP0XPxbu9YPh1az0AqUH2vMlIFoDXrB9tFfnQsOjk0Y7/TQ6e9fAtAiPoo8BQhbpMviknJgzNwkNrSPbWSeSvHO9y2ekGVb8gOdEgo1EJFWGtZSzNgEE3AJopSRy6TJP9TZ5f+8IpxzMWm2dnsDDCYy4hNhB0nXadaaHgF7kVwI2A6fHs5zpIhIACIC72lv76L4/ASH7IE+RemLi4BXSMruEZJjFux6OdUJiOvH6lXA74SyWLYgTvAhxyWFWOb5hIC0AJndJfiSI+q8IFlG/n1xq4Hu2KkXSLjd0Zo3zyck4t96IwJ6/9f6wOJpLcdb7CaJ8SoLIbd9FiOjzHKtJjWdgk4Ekn9fDZg3ehW59oAxK0XoE7ogeuI7+6HVhslmy0Hyv7ZC8DK1y3rJ3kI3ztoOEzCe/5Pivqrv9FYbekGHOA2ButtlwVu3v51CfKQ4yriw1Nyc+vSWXoUKfEv6v04NO4K00sC+h5vzGW7DDKuOpHMtfU1zKHLAJiKVPjuGgpR+PU//v9OKDuw24D2Gl4="
