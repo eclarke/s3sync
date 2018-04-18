@@ -11,5 +11,5 @@ before_install:
 script:
   - go test
 after_success:
-  - gox -output "dist/{{.Dir}}_{{.OS}}_{{.Arch}}"
+  - gox -output "dist/{{.Dir}}_{{.OS}}_{{.Arch}}" -os="linux windows darwin" -arch="amd64 386"
   - ghr --username eclarke --token $GITHUB_TOKEN --replace --prerelease --debug latest dist/
