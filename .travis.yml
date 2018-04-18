@@ -11,5 +11,5 @@ before_install:
 script:
   - go test
 after_success:
-  - gox -output "dist/{{.OS}}_{{.Arch}}_{{.Dir}}"
-  - ghr --username eclarke --token $GITHUB_TOKEN --replace --prerelease --debug pre-release dist/
+  - gox -output "dist/{{.Dir}}_{{.OS}}_{{.Arch}}"
+  - ghr --username eclarke --token $GITHUB_TOKEN --replace --prerelease --debug latest dist/
