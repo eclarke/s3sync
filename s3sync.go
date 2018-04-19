@@ -2,7 +2,6 @@ package main
 
 import (
 	"archive/tar"
-	"compress/gzip"
 	"crypto/md5"
 	"encoding/base64"
 	"flag"
@@ -12,6 +11,8 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+
+	"github.com/klauspost/pgzip"
 
 	"github.com/fatih/color"
 
@@ -65,7 +66,7 @@ func createArchive(name string, path string) error {
 		return err
 	}
 	defer archive.Close()
-	gw := gzip.NewWriter(archive)
+	gw := pgzip.NewWriter(archive)
 	defer gw.Close()
 	tw := tar.NewWriter(gw)
 	defer tw.Close()
@@ -134,13 +135,13 @@ func objectExists(key string, hash string, bucket string, svc *s3.S3) bool {
 	md5sum, hasMd5 := out.Metadata["Md5chksum"]
 
 	if hasMd5 && (*md5sum == hash) {
-		info("Remote: found matching name and MD5")
+		info("Remote: file exists")
 		return true
 	} else if hasMd5 {
-		info("Remote: found matching name, but mismatched MD5 (local: %s, remote: %s)", hash, *md5sum)
+		info("Remote: found, but mismatched MD5 (local: %s, remote: %s)", hash, *md5sum)
 		return false
 	} else {
-		info("Remote: found matching name, but no MD5 stored")
+		info("Remote: found, but no MD5 stored")
 		return false
 	}
 
