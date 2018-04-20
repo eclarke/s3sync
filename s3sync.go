@@ -22,6 +22,11 @@ func main() {
 		color.NoColor = true
 	}
 
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage: s3sync <ul/dl/list> [options]\nSubcommands:\n ul: upload\n dl: download\n list: list files\n")
+		flag.PrintDefaults()
+	}
+
 	uploadCmd := flag.NewFlagSet("ul", flag.ExitOnError)
 	downloadCmd := flag.NewFlagSet("dl", flag.ExitOnError)
 	listCmd := flag.NewFlagSet("list", flag.ExitOnError)
@@ -45,8 +50,9 @@ func main() {
 	flag.Parse()
 
 	if len(os.Args) < 2 {
-		flag.PrintDefaults()
-		fatal("Must specify upload ('ul'), download ('dl'), or 'list'")
+		flag.Usage()
+		fmt.Fprint(os.Stderr, "Error: specify a subcommand.\n")
+		os.Exit(1)
 	}
 
 	initS3 := func() (bucket string, sess *session.Session, svc *s3.S3) {

@@ -23,30 +23,30 @@ wget https://github.com/eclarke/s3sync/releases/download/latest/s3sync_linux_amd
 ```
 
 ## Usage
-```sh
-$ ./s3sync-linux64 -h
-Usage of ./s3sync-linux64:
--bucket string
-        bucket name
-  -clean
-        delete local archive upon successful upload
-  -endpoint string
-        service endpoint url (default "https://s3.wasabisys.com")
-  -folder string
-        folder to upload
-  -force
-        recreate archive if exists
-  -makeBucket
-        create bucket
-  -region string
-        s3 region (default "us-east-1")
-```
 
-To upload a folder to Wasabi, you’d run
+### Uploading a folder:
+
+To upload a folder, you’d run
 ```sh
-./s3sync-linux64 -bucket <my_bucket> -folder /path/to/folder
+./s3sync ul -bucket my_bucket -folder /path/to/folder
 ```
 
 S3Sync will then create an archive in the working directory called `folder.tar.gz` (make sure you have enough space on your hard drive for this!) and upload it to S3. 
 
 If you re-run this command, you will find that nothing happens: it doesn’t recreate the archive and it doesn’t re-upload as the local copy and the remote copy have the same fingerprint. If you’ve changed something in the folder, specify `-force` to recreate the archive. This will trigger a re-upload since the fingerprints will no longer match. If you specify `-clean`, the local archive will be deleted upon successful upload.
+
+### Downloading an archive
+
+To download an existing archive, run:
+```sh
+./s3sync dl -bucket my_bucket -archive folder.tar.gz
+```
+
+This downloads the file to your working directory.
+
+### Listing archives on remote
+
+To see all the files on your remote bucket, run:
+```sh
+./s3sync list -bucket my_bucket
+``` 
