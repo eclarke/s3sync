@@ -3,7 +3,8 @@
 `s3sync` is a program that will archive and upload a given folder to an S3-compatible service (by default, [Wasabi](https://wasabisys.com)). 
 
 **Features**:
-* Parallel upload of large files thanks to AWS Go SDK
+* Parallelized upload/download of large files thanks to [AWS SDK for Go](https://docs.aws.amazon.com/sdk-for-go/v1/developer-guide/welcome.html)
+* Parallelized compression of files during archiving thanks to [klauspost/pgzip](https://github.com/klauspost/pgzip)
 * MD5 hashing of local and remote files to prevent duplicate uploads
 * Completely dependency-free and cross-platform!
 
