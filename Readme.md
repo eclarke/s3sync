@@ -1,6 +1,6 @@
-# S3Sync: uploading folders to S3
+# S3Sync: archiving folders on S3
 
-`s3sync` is a program that will archive and upload a given folder to an S3-compatible service (by default, [Wasabi](https://wasabisys.com)). 
+`s3sync` is a program that will archive a given folder to an S3-compatible service (by default, [Wasabi](https://wasabisys.com)). 
 
 **Features**:
 * Parallelized upload/download of large files thanks to [AWS SDK for Go](https://docs.aws.amazon.com/sdk-for-go/v1/developer-guide/welcome.html)
