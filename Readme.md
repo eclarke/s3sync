@@ -23,6 +23,8 @@ Next, download a binary from our release page. The most up-to-date binaries are 
 wget https://github.com/eclarke/s3sync/releases/download/latest/s3sync_linux_amd64 
 ```
 
+On Linux and Mac, you may need to make the binary executable with `chmod +x s3sync_linux_amd64`.
+
 ## Usage
 
 ### Uploading a folder:
