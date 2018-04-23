@@ -78,16 +78,16 @@ func main() {
 	switch os.Args[1] {
 	case "ul":
 		uploadCmd.Parse(os.Args[2:])
-		// bucket, sess, svc := initS3()
+		bucket, sess, svc := initS3()
 		archive, err := NewArchive(*folderPtr, *remakeArchive)
 		if err != nil {
 			fatal("Could not create archive %q. (%v)", *folderPtr, err)
 		}
 
 		if !*dryrun {
-			// if err = archive.Upload(bucket, svc, sess); err != nil {
-			// 	fatal("Could not upload archive %q. (%v)", archive.name, err)
-			// }
+			if err = archive.Upload(bucket, svc, sess); err != nil {
+				fatal("Could not upload archive %q. (%v)", archive.name, err)
+			}
 
 			if *clean {
 				if err = archive.Delete(); err != nil {
