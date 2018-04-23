@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -74,40 +75,43 @@ func calculateMD5(path string) (string, error) {
 	return hash, nil
 }
 
-func addFile(tw *tar.Writer, path string, info os.FileInfo) error {
-	file, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	header, err := tar.FileInfoHeader(info, path)
-	if err != nil {
-		return err
-	}
-
-	// Alter the name in the FileInfo to take the full path so that
-	// the tar file maintains the directory structure
-	header.Name = path
-
-	if err := tw.WriteHeader(header); err != nil {
-		return err
-	}
-	if _, err := io.Copy(tw, file); err != nil {
-		return err
-	}
-	return nil
-}
-
 func addFiles(tw *tar.Writer, path string) error {
-	filepath.Walk(path, func(p string, info os.FileInfo, err error) error {
-		if !info.IsDir() {
-			if err := addFile(tw, p, info); err != nil {
+	baseDir := filepath.Base(path)
+	walkFn := func(p string, finfo os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		var link string
+		if finfo.Mode()&os.ModeSymlink == os.ModeSymlink {
+			if link, err = os.Readlink(p); err != nil {
 				return err
 			}
 		}
+		header, err := tar.FileInfoHeader(finfo, link)
+		if err != nil {
+			return err
+		}
+		header.Name = filepath.ToSlash(filepath.Join(baseDir, strings.TrimPrefix(p, path)))
+		if err = tw.WriteHeader(header); err != nil {
+			return err
+		}
+		if !finfo.Mode().IsRegular() {
+			return nil
+		}
+		file, err := os.Open(p)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+
+		if _, err = io.Copy(tw, file); err != nil {
+			return err
+		}
 		return nil
-	})
+	}
+	if err := filepath.Walk(path, walkFn); err != nil {
+		return err
+	}
 	return nil
 }
 
