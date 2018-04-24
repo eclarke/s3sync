@@ -114,7 +114,13 @@ func main() {
 		for _, item := range resp.Contents {
 			modTime := (*item.LastModified).Format("Jan 2")
 			size := cyan(humanize.Bytes(uint64(*item.Size)))
-			fmt.Printf("%s\t%v\t%s\n", size, modTime, blue(*item.Key))
+			ra, err := NewRemoteArchive(*item.Key, bucket, svc)
+			if err != nil {
+				info("Non-fatal error: could not get info on remote object %q. (%v)", *item.Key, err)
+			}
+			fingerprint, err := ra.Fingerprint()
+
+			fmt.Printf("%s\t%v\t(%s)\t%s\n", size, modTime, fingerprint, blue(*item.Key))
 		}
 
 	}

@@ -1,15 +1,24 @@
 language: go
-go: 
-  - "1.10"
+go:
+- '1.10'
 env:
   global:
-    - secure: "lJ0xVISyrceJ2K5nllxQpGMWzvKmuBDqsUbOFd33nytTg8L3WXOgYETGcvgTuIvfNR1Xeq/2T/0R1f5LaMivFsElQn+6UFMgn1qzJWGPRBJPKfhR8O/oRP4563AM1LsVCqBqG+Fx+EF7O/Z5tvPML5DQt2Scd8ZsAHnzeZYtN49vS5eA9axeEls5yWVhMXlV+4RKPHzo5fv3cUpjB/inYpT4As0nrpw7iunIEAMP6Ffow3FbjBzZQAy9dBBeN+tiNbHFbb2Qj+OcpZpAhChRDL5i83mph3Y7tafvEFriwxqLxiZmMlFGafHJYb/cdfI9cBXtjkCI1ezWufEcSqcjF/zJQ/AHS8AuzY0RN0oOHflQ/itSDjiXkTy4zMTagTAHxWdT71rs3fSzCn2tBOxnwFQrFm0pM6IbyhFh1jI5WBghzpTqn7VtNfVpGIj3fJUyiFkEWlVx9c5uUhtrGVhQJUNv3onSsvNkEXWHEexQZidZWC8inrKTVNzgN9DnZWaOvya1qPhPGb4hUqDtOANPVCfQ27QweU2yhqqDHV4lKHKkWAZJkAY/MRYviPyruf59rVXHYeJoZ1fBcTUVWpdDJKKRpYHkH4PO+E4fOB6zo3JdOGb2hxRJf7uywxRCLMzNl1wXWVe6MuXrg+eEdw73v4p8w2vJP0uru+N8Rzi7cx4="
-    - "PATH=$GOPATH/bin:$PATH"
+  - secure: lJ0xVISyrceJ2K5nllxQpGMWzvKmuBDqsUbOFd33nytTg8L3WXOgYETGcvgTuIvfNR1Xeq/2T/0R1f5LaMivFsElQn+6UFMgn1qzJWGPRBJPKfhR8O/oRP4563AM1LsVCqBqG+Fx+EF7O/Z5tvPML5DQt2Scd8ZsAHnzeZYtN49vS5eA9axeEls5yWVhMXlV+4RKPHzo5fv3cUpjB/inYpT4As0nrpw7iunIEAMP6Ffow3FbjBzZQAy9dBBeN+tiNbHFbb2Qj+OcpZpAhChRDL5i83mph3Y7tafvEFriwxqLxiZmMlFGafHJYb/cdfI9cBXtjkCI1ezWufEcSqcjF/zJQ/AHS8AuzY0RN0oOHflQ/itSDjiXkTy4zMTagTAHxWdT71rs3fSzCn2tBOxnwFQrFm0pM6IbyhFh1jI5WBghzpTqn7VtNfVpGIj3fJUyiFkEWlVx9c5uUhtrGVhQJUNv3onSsvNkEXWHEexQZidZWC8inrKTVNzgN9DnZWaOvya1qPhPGb4hUqDtOANPVCfQ27QweU2yhqqDHV4lKHKkWAZJkAY/MRYviPyruf59rVXHYeJoZ1fBcTUVWpdDJKKRpYHkH4PO+E4fOB6zo3JdOGb2hxRJf7uywxRCLMzNl1wXWVe6MuXrg+eEdw73v4p8w2vJP0uru+N8Rzi7cx4=
+  - PATH=$GOPATH/bin:$PATH
 before_install:
-  - go get github.com/mitchellh/gox
-  - go get github.com/tcnksm/ghr
+- go get github.com/mitchellh/gox
+- go get github.com/tcnksm/ghr
 script:
-  - go test
+- go test
 after_success:
-  - gox -output "dist/{{.Dir}}_{{.OS}}_{{.Arch}}" -os="linux windows darwin" -arch="amd64 386"
-  - ghr --username eclarke --token $GITHUB_TOKEN --replace --prerelease --debug latest dist/
+- gox -output "dist/{{.Dir}}_{{.OS}}_{{.Arch}}" -os="linux windows darwin" -arch="amd64
+  386"
+- ghr --username eclarke --token $GITHUB_TOKEN --replace --prerelease --debug latest
+  dist/
+deploy:
+  provider: releases
+  api_key:
+    secure: I1lczyl2ncrd+v1TkOAvkbDVAiqRqdIDEwEww3ltla/COi/6sPAE+x3p0DHGlfICq6iYkeMibdKXtz93bSmWnp9ZtWV58Nhe7bQne1qyyzBJqq8V9nfnlH/ixfpLhJdMzbdqSz9gDKPzC0yHx0WtUJR1aOWNBoe+MnbT8e1zmoYJHFABA3PBA9Wt81lrClmBAb3VcBVocePzJs4YCKB915SVCHzgBdR07gFMt8RAdjlTJCwHdz1eN8kWMO/OFaMgFgJLvisNXBZ+zV5Zr6wOKApVZjgwnp0n0Ie6wIzapXzEOIntGB9y0hxl3erzUpVtf81XXEp1/jIQeR5Xdbz+yZcM66zPSWy63sysmPpWyTacz9WgJ2yzLkGijceuE0S1Dlr053zWynibLLWqylvXXpZxgAwfbPXlq2D/QWYjUEd1/ox4JGUBC6cb59I3X5Fkm70wET6cA74gbgEiGJ62R2UQV0nLlDO1jIp1+dVBkRFjO4f/5b3J+Q+UT5mZ+doFVCEAgjF7vLKpKjcM6BskYyWtWvSF62J3r0jvuegQx2sg/6TSMiXSFHEdMpUTmUuEoexn7UDW1xT4oVOqwF7+AoMCK4+qFkdtJ/8Zxoq6X4Bwo8553Dyv9PzYxXQtdv1osAyfI80x0U+fAAEoArde6Ta8ia9wurTTUs5vjZwjCb0=
+  file: sdfsdf
+  on:
+    repo: eclarke/s3sync

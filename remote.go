@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"os"
 
@@ -71,4 +73,26 @@ func (ra RemoteArchive) Download(sess *session.Session) error {
 	}
 	info("Downloaded %q (%d bytes)", ra.key, numBytes)
 	return nil
+}
+
+func (ra RemoteArchive) Md5Hex() (hexstr string, err error) {
+	hash, err := base64.StdEncoding.DecodeString(ra.md5)
+	if err != nil {
+		return "", err
+	}
+	hexstr = hex.EncodeToString(hash)
+	return
+}
+
+func (ra RemoteArchive) Fingerprint() (string, error) {
+	hash, err := ra.Md5Hex()
+	if err != nil {
+		return "", err
+	}
+	rhash := []rune(hash)
+	fingerprintLen := 7
+	if len(rhash) < fingerprintLen {
+		fingerprintLen = len(rhash)
+	}
+	return string(rhash[0:fingerprintLen]), nil
 }
