@@ -51,5 +51,11 @@ This downloads the file to your working directory.
 
 To see all the files on your remote bucket, run:
 ```sh
-./s3sync list -bucket my_bucket
+$ ./s3sync list -bucket my_bucket
+118 GB	Apr 20	(062f6fe)	run1.tar.gz
+113 GB	Apr 20	(079de7e)	run2.tar.gz
+108 GB	Apr 23	(8095954)	run3.tar.gz
 ``` 
+
+The first column shows the size, the second is the modification date (which would be the date uploaded), the third is the first 7 digits of the MD5 hash, and the final column is the name.
+
