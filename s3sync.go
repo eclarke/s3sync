@@ -38,6 +38,7 @@ func main() {
 	folderPtr := uploadCmd.String("folder", "", "folder to upload")
 	remakeArchive := uploadCmd.Bool("force", false, "recreate archive if exists")
 	clean := uploadCmd.Bool("clean", false, "delete local archive upon successful upload")
+	dryrun := uploadCmd.Bool("dryrun", false, "perform a dry run (archive, but no upload)")
 	uploadCmd.StringVar(bucketPtr, "bucket", "", "bucket name")
 	uploadCmd.StringVar(endpointPtr, "endpoint", "https://s3.wasabisys.com", "service endpoint url")
 	uploadCmd.StringVar(regionPtr, "region", "us-east-1", "s3 region")
@@ -83,15 +84,20 @@ func main() {
 			fatal("Could not create archive %q. (%v)", *folderPtr, err)
 		}
 
-		if err = archive.Upload(bucket, svc, sess); err != nil {
-			fatal("Could not upload archive %q. (%v)", archive.name, err)
+		if !*dryrun {
+			if err = archive.Upload(bucket, svc, sess); err != nil {
+				fatal("Could not upload archive %q. (%v)", archive.name, err)
+			}
+
+			if *clean {
+				if err = archive.Delete(); err != nil {
+					fatal("Could not delete archive; try removing it manually. (%v)", err)
+				}
+			}
+		} else {
+			info("Dryrun, not uploading")
 		}
 
-		if *clean {
-			if err = archive.Delete(); err != nil {
-				fatal("Could not delete archive; try removing it manually. (%v)", err)
-			}
-		}
 	case "dl":
 		downloadCmd.Parse(os.Args[2:])
 		bucket, sess, svc := initS3()
